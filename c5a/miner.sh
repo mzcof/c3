@@ -1,7 +1,7 @@
 #!/bin/bash
 killall xmrig
 killall cpulimit
-PASS=`ip route get 1 | awk -F 'src ' '{print $2}' | awk '{print $1}'| sed 's/\./X/g'`
+PASS=`ip route get 1 | awk -F 'src ' '{print $2}' | awk '{print $1}'| sed 's/\./-/g'`
 apt install wget cpulimit screen psmisc -y
 wget https://raw.githubusercontent.com/mzcof/c3/main/cpurandomlimit
 chmod +x ./cpurandomlimit
