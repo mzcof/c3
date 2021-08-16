@@ -1,11 +1,5 @@
 #!/bin/bash
 
-## License: GPL
-## It can reinstall Debian online, with VNC support.
-## Original Author: MoeClub.org veip007
-## Now Author: Erope
-## Blog: https://www.shinenet.cn
-
 export subnet=$(ip -o -f inet addr show | awk '/scope global/{sub(/[^.]+\//,"0/",$4);print $4}' | head -1 | awk -F '/' '{print $2}')
 export value=$(( 0xffffffff ^ ((1 << (32 - $subnet)) - 1) ))
 export tmpVER=''
@@ -362,14 +356,6 @@ mv -f "/boot/initrd.img.vnc" "/tmp/$NewIMG"
 
 $UNCOMP < /tmp/$NewIMG | cpio --extract --verbose --make-directories --no-absolute-filenames >>/dev/null 2>&1
 
-# 放入VNC
-wget -O /tmp/vnc.zip ${down_url}/vnc_${DIST}_${VER}.zip
-unzip -d /tmp/boot/ /tmp/vnc.zip
-chmod a+x /tmp/boot/usr/bin/x0vncserver
-chmod a+x /tmp/boot/usr/sbin/vncsession
-echo "/usr/bin/x0vncserver -securitytypes none &" >> /tmp/boot/lib/debian-installer.d/S62Xorg
-
-# 放入硬盘选择
 if [ ! -z "$uuid" ]; then
   echo $uuid > /tmp/boot/disk_uuid
 fi
@@ -378,11 +364,8 @@ echo $disk > /tmp/boot/disk_dev
 wget -O /tmp/boot/disk_select.sh ${down_url}/disk_select.sh
 chmod a+x /tmp/boot/disk_select.sh
 
-# 强制不进入低内存模式
-# 内存是否足够的逻辑在脚本中进行
-# 强行关闭低内存模式
 sed -i 's/1024/1/' /tmp/boot/lib/debian-installer-startup.d/S15lowmem
-# 强行开启Xorg
+
 sed -i 's/return 1/return 0/' /tmp/boot/lib/debian-installer.d/S60frontend
 
 # 设置自动安装选项
