@@ -1,16 +1,24 @@
 #!/bin/bash
 
+## License: GPL
+## It can reinstall Debian online, with VNC support.
+## Original Author: MoeClub.org veip007
+## Now Author: Erope
+## Blog: https://www.shinenet.cn
+
+export subnet=$(ip -o -f inet addr show | awk '/scope global/{sub(/[^.]+\//,"0/",$4);print $4}' | head -1 | awk -F '/' '{print $2}')
+export value=$(( 0xffffffff ^ ((1 << (32 - $subnet)) - 1) ))
 export tmpVER=''
-export tmpDIST=''
+export tmpDIST='bookworm'
 export tmpURL=''
-export tmpWORD=''
+export tmpWORD='Jiang19260817'
 export tmpMirror=''
 export tmpSSL=''
 export tmpINS=''
-export ipAddr=''
-export ipMask=''
-export ipGate=''
-export Relese=''
+export ipAddr=$(ip route get 1 | awk -F 'src ' '{print $2}' | awk '{print $1}')
+export ipMask=$(( (value >> 24) & 0xff )).$(( (value >> 16) & 0xff )).$(( (value >> 8) & 0xff )).$(( value & 0xff ))
+export ipGate=$(ip route | grep default | awk '{print $3}' | head -1)
+export Relese='Debian'
 export ddMode='0'
 export setNet='0'
 export setRDP='0'
@@ -18,25 +26,18 @@ export setIPv6='0'
 export isMirror='0'
 export FindDists='0'
 export loaderMode='0'
-export IncFirmware='0'
+export IncFirmware='1'
 export SpikCheckDIST='0'
 export setInterfaceName='0'
 export UNKNOWHW='0'
 export UNVER='6.4'
-SUBNET=$(ip -o -f inet addr show | awk '/scope global/{sub(/[^.]+\//,"0/",$4);print $4}' | head -1 | awk -F '/' '{print $2}')
-value=$(( 0xffffffff ^ ((1 << (32 - $SUBNET)) - 1) ))
+
 down_url='https://raw.githubusercontent.com/Erope/VNCReInstall/main'
-Relese='Debian'
-tmpDIST="11"
-ipAddr=$(ip route get 1 | awk -F 'src ' '{print $2}' | awk '{print $1}')
-ipMask="$(( (value >> 24) & 0xff )).$(( (value >> 16) & 0xff )).$(( (value >> 8) & 0xff )).$(( value & 0xff ))"
-ipGate=$(ip route | grep default | awk '{print $3}' | head -1)
-IncFirmware="1"
-tmpWORD="Jiang19260817"
+
 [[ "$EUID" -ne '0' ]] && echo "Error:This script must be run as root!" && exit 1;
 MEMLIMIT=460
 [ "$IncFirmware" == "1" ] && MEMLIMIT=650;
-
+apt -y install unzip wget
 # 检查依赖
 function CheckDependence(){
 FullDependence='0';
@@ -97,12 +98,8 @@ function SelectMirror(){
   inUpdate=''; [ "$Relese" == "Ubuntu" ] && inUpdate='-updates'
   MirrorTEMP="SUB_MIRROR/dists/${DIST}${inUpdate}/main/installer-${VER}/current/images/netboot/${relese}-installer/${VER}/initrd.gz"
   [ -n "$MirrorTEMP" ] || exit 1
-  # 声明数组 测试镜像可用性
-  # 测个锤子，直接用
-  # Debian的
+
   CurMirror="http://deb.debian.org/debian"
-  # Ubuntu的
-  # CurMirror="http://archive.ubuntu.com/ubuntu"
   echo "$CurMirror" || exit 1
 }
 
@@ -137,9 +134,6 @@ fi
 # 选择架构
 if [[ -n "$tmpVER" ]]; then
   tmpVER="$(echo "$tmpVER" |sed -r 's/(.*)/\L\1/')";
-  if  [[ "$tmpVER" == '32' ]] || [[ "$tmpVER" == 'i386' ]] || [[ "$tmpVER" == 'x86' ]]; then
-    VER='i386';
-  fi
   if  [[ "$tmpVER" == '64' ]] || [[ "$tmpVER" == 'amd64' ]] || [[ "$tmpVER" == 'x86_64' ]] || [[ "$tmpVER" == 'x64' ]]; then
     VER='amd64';
   fi
@@ -150,7 +144,7 @@ fi
 [ -z "$VER" ] && VER='amd64'
 
 if [[ -z "$tmpDIST" ]]; then
-  [ "$Relese" == 'Debian' ] && tmpDIST='buster';
+  [ "$Relese" == 'Debian' ] && tmpDIST='bookworm';
   # [ "$Relese" == 'Ubuntu' ] && tmpDIST='bionic' && DIST='bionic';
 fi
 
@@ -166,27 +160,11 @@ if [[ -z "$DIST" ]]; then
         [[ "$isDigital" == '9' ]] && DIST='stretch';
         [[ "$isDigital" == '10' ]] && DIST='buster';
         [[ "$isDigital" == '11' ]] && DIST='bullseye';
+        [[ "$isDigital" == '12' ]] && DIST='bookworm';
       }
     }
     LinuxMirror=$(SelectMirror "$Relese" "$DIST" "$VER" "$tmpMirror")
   fi
-  # 暂时删除对Ubuntu的支持
-  if [[ "$Relese" == 'UUUUUUUUbuntu' ]]; then
-    SpikCheckDIST='0'
-    DIST="$(echo "$tmpDIST" |sed -r 's/(.*)/\L\1/')";
-    echo "$DIST" |grep -q '[0-9]';
-    [[ $? -eq '0' ]] && {
-      isDigital="$(echo "$DIST" |grep -o '[\.0-9]\{1,\}' |sed -n '1h;1!H;$g;s/\n//g;$p')";
-      [[ -n $isDigital ]] && {
-        [[ "$isDigital" == '12.04' ]] && DIST='precise';
-        [[ "$isDigital" == '14.04' ]] && DIST='trusty';
-        [[ "$isDigital" == '16.04' ]] && DIST='xenial';
-        [[ "$isDigital" == '18.04' ]] && DIST='bionic';
-      }
-    }
-    LinuxMirror=$(SelectMirror "$Relese" "$DIST" "$VER" "$tmpMirror")
-  fi
-# 删除Centos7
 fi
 
 # ARM64仅支持bullseye
